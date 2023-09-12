@@ -8,11 +8,14 @@ import 'package:flutter_view_pdf/pdf/pdf.dart';
 import 'package:path_provider/path_provider.dart';
 
 void main() {
-  runApp(const MyApp());
+  // it should be the first line in main method
+  WidgetsFlutterBinding.ensureInitialized();
+
+  runApp(MyApp());
 }
 
 class MyApp extends StatefulWidget {
-  const MyApp({super.key});
+  MyApp({super.key});
 
   @override
   State<MyApp> createState() => _MyAppState();
@@ -22,6 +25,12 @@ class _MyAppState extends State<MyApp> {
   String _platformVersion = 'Unknown';
   int? _pageCount;
   List<PdfPageResponse>? _pages;
+  List<String> urls = [
+    'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+    'https://freetestdata.com/wp-content/uploads/2023/07/800KB.pdf'
+  ];
+  String downloadUrl =
+      'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf';
   final _flutterViewPdfPlugin = FlutterPdfViewApi();
 
   @override
@@ -64,9 +73,6 @@ class _MyAppState extends State<MyApp> {
     });
   }
 
-  String downloadUrl =
-      'https://freetestdata.com/wp-content/uploads/2023/07/800KB.pdf';
-
   Future<PdfDocumentResponse> downloadPdf(String url) async {
     // Download the pdf to a temporary file
     final file = await _downloadUrl(url);
@@ -100,7 +106,32 @@ class _MyAppState extends State<MyApp> {
     return MaterialApp(
       home: Scaffold(
         appBar: AppBar(
-          title: Text('Page count: $_pageCount'),
+          title: Text((_pageCount != null) ? 'Page count: $_pageCount' : ''),
+          actions: [
+            PopupMenuButton(
+              itemBuilder: (context) {
+                return urls.map((e) {
+                  var uri = Uri.parse(e);
+                  return PopupMenuItem(
+                    child: Text(uri.pathSegments.last),
+                    value: e,
+                  );
+                }).toList();
+              },
+              onSelected: (value) async {
+                setState(() {
+                  _pageCount = null;
+                  _pages = null;
+                });
+                downloadUrl = value as String;
+                var result = await downloadPdf(downloadUrl);
+                setState(() {
+                  _pageCount = result.pageCount;
+                  _pages = result.pages?.whereType<PdfPageResponse>().toList();
+                });
+              },
+            )
+          ],
         ),
         body: (_pageCount != null)
             ? ListView.builder(
